@@ -1,0 +1,57 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PICO ECG Monitor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #101827;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { text-align: center; color: #55e6c1; }
+    .people {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 20px;
+      border: 1px solid #334155;
+    }
+    .bpm { font-size: 34px; color: #ff7185; }
+    .status { color: #cbd5e1; }
+    .note { color: #cbd5e1; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>❤️ PICO ECG MONITOR</h1>
+  <p class="note">Four-person monitoring dashboard</p>
+
+  <div class="people" id="people"></div>
+
+  <p class="note">
+    Demo display only — live sensor data is not connected yet.
+  </p>
+
+  <script>
+    const people = document.getElementById("people");
+
+    for (let i = 1; i <= 4; i++) {
+      people.innerHTML += `
+        <div class="card">
+          <h2>Person ${i}</h2>
+          <div class="bpm">-- BPM</div>
+          <p class="status">Heart Rate: Waiting for sensor</p>
+          <p>ECG waveform: Not connected</p>
+        </div>`;
+    }
+  </script>
+</body>
+</html>
