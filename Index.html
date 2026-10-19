@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PICO ECG Monitor</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f2f6fb;color:#17243b}
+header{background:#102b46;color:white;padding:20px}
+header h2{margin:0 0 7px}
+header p{margin:0;color:#c6d8e8}
+nav{display:flex;gap:8px;overflow:auto;padding:12px;background:white}
+nav button{border:0;padding:11px 14px;border-radius:8px;background:#eaf0f7;white-space:nowrap}
+nav button.active{background:#087f8c;color:white}
+main{padding:16px;max-width:1000px;margin:auto}
+h3{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:white;padding:16px;border-radius:14px;margin-bottom:14px;box-shadow:0 2px 10px #122b4610}
+.metric{font-size:30px;font-weight:bold;color:#087f8c;margin:10px 0}
+.small{font-size:13px;color:#64748b}
+.status{color:#087f68;font-weight:bold}
+canvas{width:100%;height:220px;background:#071b25;border-radius:10px;display:block}
+input,select{width:100%;padding:12px;margin:7px 0 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px}
+.action{border:0;border-radius:8px;padding:12px;background:#087f8c;color:white;font-weight:bold}
+.danger{background:#b42332}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 5px;border-bottom:1px solid #e2e8f0}
+.tablewrap{overflow-x:auto}
+.hidden{display:none}
+footer{text-align:center;padding:20px;color:#64748b;font-size:12px}
+@media(min-width:650px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header>
+  <h2>♥ PICO ECG Monitor</h2>
+  <p>Patient Health Monitoring System</p>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('dashboard',this)">Dashboard</button>
+  <button onclick="showTab('ecg',this)">ECG Monitor</button>
+  <button onclick="showTab('patients',this)">Patients</button>
+  <button onclick="showTab('admin',this)">Doctor / Admin</button>
+</nav>
+
+<main>
+<section id="dashboard">
+  <h3>Health Dashboard</h3>
+  <div class="grid">
+    <div class="card"><div class="small">Total Patients</div>
+      <div class="metric" id="total">1</div></div>
+    <div class="card"><div class="small">Simulated Heart Rate</div>
+      <div class="metric"><span id="bpm">75</span> <small>BPM</small></div></div>
+    <div class="card"><div class="small">Demo Monitor</div>
+      <div class="metric" style="font-size:20px">Active</div></div>
+    <div class="card"><div class="small">Data Source</div>
+      <div class="metric" style="font-size:18px">Simulation</div></div>
+  </div>
+  <div class="card">
+    <h3>Live ECG Waveform</h3>
+    <canvas id="ecg" width="900" height="260"></canvas>
+    <p class="small">Illustrative waveform only — not real ECG data.</p>
+    <button class="action" onclick="showTab('ecg',document.querySelectorAll('nav button')[1])">Open ECG Monitor</button>
+  </div>
+  <div class="card">
+    <h3>Selected Patient</h3>
+    <p id="selected">Demo Patient (P001)</p>
+  </div>
+</section>
+
+<section id="ecg" class="hidden">
+  <h3>ECG Monitoring</h3>
+  <div class="card">
+    <div class="small">Simulated heart rate</div>
+    <div class="metric"><span id="bpm2">75</span> BPM</div>
+    <p class="status">● Simulation running</p>
+    <canvas id="ecg2" width="900" height="260"></canvas>
+    <p class="small">This graph is computer-generated for demonstration.</p>
+  </div>
+</section>
+
+<section id="patients" class="hidden">
+  <h3>Patient Details</h3>
+  <div class="card">
+    <label>Patient name</label>
+    <input id="pname" placeholder="Enter patient name">
+    <label>Patient ID</label>
+    <input id="pid" placeholder="Example: P002">
+    <label>Age</label>
+    <input id="age" type="number" min="1" max="120" placeholder="Enter age">
+    <button class="action" onclick="addPatient()">Add Patient</button>
+  </div>
+  <div class="card">
+    <h3>Patient List</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Age</th><th>Action</th></tr></thead>
+        <tbody id="patientRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="admin" class="hidden">
+  <h3>Doctor / Admin Panel</h3>
+  <div class="card">
+    <h3>Demo Controls</h3>
+    <p>Choose a patient to display on the dashboard.</p>
+    <select id="choosePatient" onchange="selectPatient()"></select>
+    <button class="action" onclick="exportPatients()">Export Patient List (CSV)</button>
+  </div>
+  <div class="card">
+    <h3>Project Information</h3>
+    <p><b>Project:</b> PICOECGSVGP</p>
+    <p><b>Mode:</b> Simulated ECG</p>
+    <p><b>Purpose:</b> Educational demonstration</p>
+    <p class="small">This demo has no real login, access control, or secure patient database.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  PICO ECG Monitor | Educational Demo Only | Not for Medical Diagnosis
+</footer>
+
+<script>
+let patients=[{id:"P001",name:"Demo Patient",age:25}];
+let selectedId="P001";
+let phase=0;
+
+function showTab(id,btn){
+  document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function addPatient(){
+  const name=document.getElementById("pname").value.trim();
+  const id=document.getElementById("pid").value.trim();
+  const age=Number(document.getElementById("age").value);
+  if(!name||!id||!Number.isInteger(age)||age<1||age>120){
+    alert("Enter a valid name, ID and age.");return;
+  }
+  if(patients.some(p=>p.id.toLowerCase()===id.toLowerCase())){
+    alert("Patient ID already exists.");return;
+  }
+  patients.push({id,name,age});
+  selectedId=id;
+  document.getElementById("pname").value="";
+  document.getElementById("pid").value="";
+  document.getElementById("age").value="";
+  renderPatients();
+}
+
+function renderPatients(){
+  document.getElementById("total").textContent=patients.length;
+  document.getElementById("patientRows").innerHTML=patients.map(p=>
+    `<tr><td>${escapeHTML(p.id)}</td><td>${escapeHTML(p.name)}</td>
+    <td>${p.age}</td><td><button class="action danger"
+    onclick="removePatient('${encodeURIComponent(p.id)}')">Delete</button></td></tr>`
+  ).join("");
+  document.getElementById("choosePatient").innerHTML=patients.map(p=>
+    `<option value="${escapeHTML(p.id)}">${escapeHTML(p.id)} - ${escapeHTML(p.name)}</option>`
+  ).join("");
+  document.getElementById("choosePatient").value=selectedId;
+  updateSelected();
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+function removePatient(encodedId){
+  const id=decodeURIComponent(encodedId);
+  patients=patients.filter(p=>p.id!==id);
+  if(!patients.length)patients.push({id:"P001",name:"Demo Patient",age:25});
+  if(!patients.some(p=>p.id===selectedId))selectedId=patients[0].id;
+  renderPatients();
+}
+
+function selectPatient(){
+  selectedId=document.getElementById("choosePatient").value;
+  updateSelected();
+}
+
+function updateSelected(){
+  const p=patients.find(x=>x.id===selectedId)||patients[0];
+  document.getElementById("selected").textContent=p.name+" ("+p.id+")";
+}
+
+function exportPatients(){
+  const rows=[["Patient ID","Name","Age"],...patients.map(p=>[p.id,p.name,p.age])];
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="demo-patients.csv";a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function drawECG(id){
+  const canvas=document.getElementById(id);
+  const ctx=canvas.getContext("2d");
+  const w=canvas.width,h=canvas.height;
+  ctx.fillStyle="#071b25";ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle="#17404a";ctx.lineWidth=1;
+  for(let x=0;x<w;x+=25){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+  for(let y=0;y<h;y+=25){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  ctx.strokeStyle="#36f2a0";ctx.lineWidth=2;ctx.beginPath();
+  for(let x=0;x<w;x++){
+    const t=(x+phase)%180;
+    let v=0;
+    if(t>=15&&t<35)v=-12*Math.sin((t-15)/20*Math.PI);
+    if(t>=48&&t<58)v=85*Math.sin((t-48)/10*Math.PI);
+    if(t>=58&&t<70)v=-25*Math.sin((t-58)/12*Math.PI);
+    if(t>=95&&t<130)v=-18*Math.sin((t-95)/35*Math.PI);
+    const y=h/2+v+Math.sin((x+phase)/18)*2;
+    if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  phase=(phase+2)%180;
+}
+function tick(){
+  const rate=72+Math.round(4*Math.sin(Date.now()/3000));
+  document.getElementById("bpm").textContent=rate;
+  document.getElementById("bpm2").textContent=rate;
+  drawECG("ecg");drawECG("ecg2");
+}
+renderPatients();
+tick();
+setInterval(tick,50);
+</script>
+</body>
+  </html>
+
+    
